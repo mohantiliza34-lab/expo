@@ -5,7 +5,7 @@ import android.os.IBinder
 import androidx.annotation.OptIn
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.session.MediaSessionService.SERVICE_INTERFACE
-import expo.modules.audio.AudioPlayer
+import expo.modules.audio.LockScreenPlayable
 import expo.modules.audio.getPlaybackServiceErrorMessage
 import expo.modules.kotlin.AppContext
 import java.lang.ref.WeakReference
@@ -14,7 +14,7 @@ class AudioPlaybackServiceBinder(val service: AudioControlsService) : android.os
 
 @OptIn(UnstableApi::class)
 class AudioPlaybackServiceConnection(
-  val player: WeakReference<AudioPlayer>,
+  val player: WeakReference<LockScreenPlayable>,
   appContext: AppContext
 ) : BaseServiceConnection<AudioPlaybackServiceBinder>(appContext) {
   var playbackServiceBinder: AudioPlaybackServiceBinder? = null
@@ -70,7 +70,7 @@ class AudioPlaybackServiceConnection(
     serviceBinder.service.playsInSilentMode = playsInSilentMode
 
     if (player.isActiveForLockScreen) {
-      serviceBinder.service.setPlayerOptions(player, player.metadata, player.lockScreenOptions)
+      serviceBinder.service.setPlayableOptions(player, player.metadata, player.lockScreenOptions)
     }
   }
 
@@ -79,7 +79,7 @@ class AudioPlaybackServiceConnection(
       service.playbackListener?.let { listener ->
         val player = player.get()
         if (player != null && !isReleased) {
-          player.ref.removeListener(listener)
+          player.player.removeListener(listener)
         }
       }
       service.playbackListener = null
