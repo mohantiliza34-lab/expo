@@ -1,166 +1,317 @@
----
-title: Create your first app
-description: In this chapter, learn how to create a new Expo project.
-hasVideoLink: true
----
+RASTHE/
+├── App.js
+├── package.json
+├── src/
+│   ├── screens/
+│   │   ├── HomeScreen.js
+│   │   ├── ReportScreen.js
+│   │   ├── MapScreen.js
+│   │   └── ComplaintsListScreen.js
+│   ├── components/
+│   │   ├── FootpathCard.js
+│   │   └── ImagePicker.js
+│   ├── services/
+│   │   └── api.js
+│   └── utils/
+│       └── constants.js
 
-import { Download03Icon } from '@expo/styleguide-icons/outline/Download03Icon';
+{
+  "name": "rasthe",
+  "version": "1.0.0",
+  "main": "App.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios"
+  },
+  "dependencies": {
+    "expo": "~50.0.0",
+    "expo-camera": "~14.0.0",
+    "expo-image-picker": "~14.7.0",
+    "expo-location": "~16.5.0",
+    "expo-status-bar": "~1.11.0",
+    "react": "18.2.0",
+    "react-native": "0.73.0",
+    "react-native-maps": "1.10.0",
+    "@react-navigation/native": "^6.1.0",
+    "@react-navigation/bottom-tabs": "^6.5.0",
+    "@react-navigation/native-stack": "^6.9.0",
+    "react-native-screens": "~3.29.0",
+    "react-native-safe-area-context": "4.8.0",
+    "react-native-gesture-handler": "~2.14.0",
+    "react-native-reanimated": "~3.6.0",
+    "@react-native-async-storage/async-storage": "1.21.0",
+    "react-native-swiper": "^1.6.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.20.0"
+  }
+}
+import React, { useState, useEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { StatusBar } from 'expo-status-bar';
+import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
-import { BoxLink } from '~/ui/components/BoxLink';
-import { Collapsible } from '~/ui/components/Collapsible';
-import { ContentSpotlight } from '~/ui/components/ContentSpotlight';
-import { Prerequisites, Requirement } from '~/ui/components/Prerequisites';
-import { ProgressTracker } from '~/ui/components/ProgressTracker';
-import { Terminal } from '~/ui/components/Snippet';
-import { Step } from '~/ui/components/Step';
-import { CODE } from '~/ui/components/Text';
-import { VideoBoxLink } from '~/ui/components/VideoBoxLink';
+import HomeScreen from './src/screens/HomeScreen';
+import ReportScreen from './src/screens/ReportScreen';
+import MapScreen from './src/screens/MapScreen';
+import ComplaintsListScreen from './src/screens/ComplaintsListScreen';
 
-In this chapter, let's learn how to create a new Expo project and how to get it running.
+const Tab = createBottomTabNavigator();
 
-<VideoBoxLink
-  videoId="m1-bc53EGh8"
-  title="Watch: Creating your first universal Expo app"
-  description="Create a new Expo project from scratch and get it running on Android, iOS, and web."
-/>
+export default function App() {
+  return (
+    <NavigationContainer>
+      <StatusBar style="dark" />
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          tabBarIcon: ({ focused, color, size }) => {
+            let iconName;
+            if (route.name === 'Swipe') {
+              iconName = focused ? 'heart' : 'heart-outline';
+            } else if (route.name === 'Report') {
+              iconName = focused ? 'add-circle' : 'add-circle-outline';
+            } else if (route.name === 'Map') {
+              iconName = focused ? 'map' : 'map-outline';
+            } else if (route.name === 'Complaints') {
+              iconName = focused ? 'list' : 'list-outline';
+            }
+            return <Ionicons name={iconName} size={size} color={color} />;
+          },
+          tabBarActiveTintColor: '#FF6B35',
+          tabBarInactiveTintColor: 'gray',
+          headerStyle: {
+            backgroundColor: '#FF6B35',
+          },
+          headerTintColor: '#fff',
+          headerTitleStyle: {
+            fontWeight: 'bold',
+          },
+        })}
+      >
+        <Tab.Screen 
+          name="Swipe" 
+          component={HomeScreen} 
+          options={{ title: 'RASTHE - Swipe' }}
+        />
+        <Tab.Screen 
+          name="Report" 
+          component={ReportScreen} 
+          options={{ title: 'Report Issue' }}
+        />
+        <Tab.Screen 
+          name="Map" 
+          component={MapScreen} 
+          options={{ title: 'Footpath Map' }}
+        />
+        <Tab.Screen 
+          name="Complaints" 
+          component={ComplaintsListScreen} 
+          options={{ title: 'My Complaints' }}
+        />
+      </Tab.Navigator>
+    </NavigationContainer>
+  );
+}
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Dimensions,
+  Image,
+  TouchableOpacity,
+  Animated,
+  PanResponder,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
----
+const { width, height } = Dimensions.get('window');
+const SWIPE_THRESHOLD = 120;
 
-<Prerequisites>
-  <Requirement title="Expo Go on a physical device">
-    Install [Expo Go](https://expo.dev/go) on a physical Android or iOS device.
-  </Requirement>
-  <Requirement title="Node.js (LTS)">
-    Install [Node.js (LTS version)](https://nodejs.org/en) on your machine.
-  </Requirement>
-  <Requirement title="A code editor">
-    Install [VS Code](https://code.visualstudio.com/) or any other preferred code editor or IDE.
-  </Requirement>
-  <Requirement title="A developer machine with a terminal">
-    A macOS, Linux, or Windows (PowerShell and WSL2) with a terminal window open.
-  </Requirement>
-</Prerequisites>
+// Mock data - In production, this would come from API
+const mockFootpaths = [
+  {
+    id: '1',
+    image: 'https://via.placeholder.com/400x300?text=Broken+Pavement',
+    location: 'Main Road, Near City Hospital',
+    issue: 'Broken pavement with exposed wires',
+    severity: 'High',
+    distance: '0.3 km',
+    reportedBy: 'Anonymous',
+    reportedDate: '2026-05-18',
+  },
+  {
+    id: '2',
+    image: 'https://via.placeholder.com/400x300?text=Missing+Sidewalk',
+    location: 'College Street, Bhanjanagar',
+    issue: 'Missing sidewalk for 50 meters',
+    severity: 'Critical',
+    distance: '0.5 km',
+    reportedBy: 'Rahul S.',
+    reportedDate: '2026-05-19',
+  },
+  {
+    id: '3',
+    image: 'https://via.placeholder.com/400x300?text=Pothole+Path',
+    location: 'Market Road Junction',
+    issue: 'Multiple potholes making walking dangerous',
+    severity: 'Medium',
+    distance: '0.8 km',
+    reportedBy: 'Priya M.',
+    reportedDate: '2026-05-17',
+  },
+];
 
-This tutorial assumes you are familiar with TypeScript and React. If you are not, check out the [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/2/everyday-types.html) and [React's official tutorial](https://react.dev/learn).
+export default function HomeScreen() {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [cards, setCards] = useState(mockFootpaths);
+  const position = new Animated.ValueXY();
 
-<Step label="1">
+  useEffect(() => {
+    if (currentIndex >= cards.length) {
+      setCurrentIndex(0);
+    }
+  }, [currentIndex]);
 
-## Initialize a new Expo app
+  const panResponder = PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onPanResponderMove: (event, gesture) => {
+      position.setValue({ x: gesture.dx, y: gesture.dy });
+    },
+    onPanResponderRelease: (event, gesture) => {
+      if (gesture.dx > SWIPE_THRESHOLD) {
+        swipeRight();
+      } else if (gesture.dx < -SWIPE_THRESHOLD) {
+        swipeLeft();
+      } else {
+        resetPosition();
+      }
+    },
+  });
 
-We'll use [`create-expo-app`](/more/create-expo/) to initialize a new Expo app. It is a command-line tool to create a new React Native project. Run the following command in your terminal:
+  const swipeRight = () => {
+    Animated.timing(position, {
+      toValue: { x: width + 100, y: 0 },
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => {
+      handleSwipe('upvote');
+    });
+  };
 
-<Terminal
-  cmd={[
-    '# Create a project named StickerSmash',
-    '$ npx create-expo-app@latest StickerSmash',
-    '',
-    '# Navigate to the project directory',
-    '$ cd StickerSmash',
-  ]}
-  cmdCopy="npx create-expo-app@latest StickerSmash && cd StickerSmash"
-/>
+  const swipeLeft = () => {
+    Animated.timing(position, {
+      toValue: { x: -width - 100, y: 0 },
+      duration: 300,
+      useNativeDriver: false,
+    }).start(() => {
+      handleSwipe('downvote');
+    });
+  };
 
-This command will create a new project directory named StickerSmash, using the [default](/more/create-expo/#--template) template. This template has essential boilerplate code and libraries needed to build our app, including Expo Router. We'll continue to add more libraries throughout this tutorial as needed.
+  const resetPosition = () => {
+    Animated.spring(position, {
+      toValue: { x: 0, y: 0 },
+      friction: 4,
+      useNativeDriver: false,
+    }).start();
+  };
 
-> **info** `create-expo-app@latest` currently creates an SDK 54 project. This tutorial is designed for SDK 54, so no `--template` flag is needed.
+  const handleSwipe = (action) => {
+    // Here you would send the vote to the API
+    console.log(`${action} on complaint ${cards[currentIndex]?.id}`);
+    setCurrentIndex(currentIndex + 1);
+    position.setValue({ x: 0, y: 0 });
+  };
 
-<Collapsible summary="Benefits of using the default template">
+  const rotateCard = position.x.interpolate({
+    inputRange: [-width / 2, 0, width / 2],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
 
-- Creates a new React Native project with `expo` package installed
-- Includes recommended tools such as Expo CLI
-- Includes a tab navigator from Expo Router to provide a basic navigation system
-- Automatically configured to run a project on multiple platforms: Android, iOS, and web
-- TypeScript configured by default
+  if (currentIndex >= cards.length) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+        <Text style={styles.emptyText}>You've reviewed all footpaths!</Text>
+        <Text style={styles.emptySubtext}>Check back later for new reports</Text>
+      </View>
+    );
+  }
 
-</Collapsible>
+  const currentCard = cards[currentIndex];
 
-</Step>
-
-<Step label="2">
-
-## Download assets
-
-<BoxLink
-  title="Download assets archive"
-  Icon={Download03Icon}
-  description="We'll be using these assets throughout this tutorial."
-  href="/static/images/tutorial/sticker-smash-assets.zip"
-/>
-
-After downloading the archive:
-
-1. Unzip the archive and replace the default assets in the **your-project-name/assets/images** directory.
-2. Open the project directory in a code editor or IDE.
-
-</Step>
-
-<Step label="3">
-
-## Run reset-project script
-
-In this tutorial, we'll build our app from scratch and understand the fundamentals of adding a file-based navigation. Let's run the `reset-project` script to remove the boilerplate code:
-
-<Terminal cmd={['$ npm run reset-project']} />
-
-After running the above command, there are two files (**index.tsx** and **\_layout.tsx**) left inside the **app** directory. The previous files from **app** and other directories (**components**, **constants**, and **hooks** &mdash; containing boilerplate code) are moved inside the **app-example** directory by the script. We'll create our own directories and component files as we go along.
-
-<Collapsible summary={<>What does the <CODE>reset-project</CODE> script do?</>}>
-
-`reset-project` script resets the **app** directory structure in a project and copies the previous boilerplate files from the project's root directory to another sub-directory called **app-example**. We can delete it since it is not part of our main app's structure.
-
-</Collapsible>
-
-</Step>
-
-<Step label="4">
-
-## Run the app on mobile and web
-
-In the project directory, run the following command to start the [development server](/more/glossary-of-terms/#development-server) from the terminal:
-
-<Terminal cmd={['$ npx expo start']} />
-
-After running the above command:
-
-1. The development server will start, and you'll see a QR code inside the terminal window.
-2. Scan that QR code to open the app on the device. On Android, use the Expo Go > **Scan QR code** option. On iOS, use the default camera app.
-3. To run the web app, press <kbd>w</kbd> in the terminal. It will open the web app in the default web browser.
-
-Once it is running on all platforms, the app should look like this:
-
-<ContentSpotlight
-  alt="App running on all platforms"
-  src="/static/images/tutorial/01-app-running-on-all-platforms.png"
-  className="max-w-[720px]"
-/>
-
-</Step>
-
-<Step label="5">
-
-## Edit the index screen
-
-The **app/index.tsx** file defines the text displayed on the app's screen. It is the entry point of our app and executes when the development server starts. It uses core React Native components such as `<View>` and `<Text>` to display background and text.
-
-Styles applied to these components use JavaScript objects rather than CSS, which is used on web. However, a lot of the properties will look familiar if you've previously used CSS on web. Most React Native components accept a `style` prop that accepts a JavaScript object as its value. For more details, see [Styling in React Native](https://reactnative.dev/docs/style).
-
-Let's modify **app/index.tsx** screen:
-
-1. Import `StyleSheet` from `react-native` and create a `styles` object to define our custom styles.
-2. Add a `styles.container.backgroundColor` property to `<View>` with the value of `#25292e`. This changes the background color.
-3. Replace the default value of `<Text>` with "Home screen".
-4. Add a `styles.text.color` property to `<Text>` with the value of `#fff` (white) to change the text color.
-
-{/* prettier-ignore */}
-```tsx app/index.tsx|collapseHeight=340
-import { Text, View, /* @tutinfo Import `StyleSheet` to define styles. */ StyleSheet/* @end */ } from 'react-native';
-
-export default function Index() {
   return (
     <View style={styles.container}>
-      /* @tutinfo This used to say "Edit app/index.tsx to edit this screen". Now it says, "Home screen". */
-      <Text style={styles.text}>Home screen</Text>
-      /* @end */
+      <Animated.View
+        style={[
+          styles.card,
+          {
+            transform: [
+              { translateX: position.x },
+              { rotate: rotateCard },
+            ],
+          },
+        ]}
+        {...panResponder.panHandlers}
+      >
+        <Image
+          source={{ uri: currentCard.image }}
+          style={styles.image}
+          resizeMode="cover"
+        />
+        
+        <View style={styles.severityBadge}>
+          <Text style={styles.severityText}>{currentCard.severity}</Text>
+        </View>
+
+        <View style={styles.cardContent}>
+          <View style={styles.locationContainer}>
+            <Ionicons name="location" size={20} color="#FF6B35" />
+            <Text style={styles.location}>{currentCard.location}</Text>
+          </View>
+          
+          <Text style={styles.issue}>{currentCard.issue}</Text>
+          
+          <View style={styles.infoRow}>
+            <View style={styles.infoItem}>
+              <Ionicons name="walk" size={16} color="#666" />
+              <Text style={styles.infoText}>{currentCard.distance}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Ionicons name="person" size={16} color="#666" />
+              <Text style={styles.infoText}>{currentCard.reportedBy}</Text>
+            </View>
+            <View style={styles.infoItem}>
+              <Ionicons name="calendar" size={16} color="#666" />
+              <Text style={styles.infoText}>{currentCard.reportedDate}</Text>
+            </View>
+          </View>
+        </View>
+      </Animated.View>
+
+      <View style={styles.buttonsContainer}>
+        <TouchableOpacity
+          style={[styles.button, styles.dislikeButton]}
+          onPress={swipeLeft}
+        >
+          <Ionicons name="close" size={30} color="#FF4444" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.button, styles.likeButton]}
+          onPress={swipeRight}
+        >
+          <Ionicons name="heart" size={30} color="#4CAF50" />
+        </TouchableOpacity>
+      </View>
+
+      <Text style={styles.instructionText}>
+        Swipe right to support • Swipe left to skip
+      </Text>
     </View>
   );
 }
@@ -168,37 +319,1162 @@ export default function Index() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    /* @tutinfo Add the value of `backgroundColor` property with `'#25292e'`.*/
-    backgroundColor: '#25292e',
-    /* @end */
+    backgroundColor: '#f5f5f5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  text: {
-    color: '#fff',
+  card: {
+    width: width - 40,
+    height: height * 0.6,
+    backgroundColor: 'white',
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: '60%',
+  },
+  severityBadge: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    backgroundColor: '#FF4444',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  severityText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 12,
+  },
+  cardContent: {
+    padding: 20,
+    flex: 1,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  location: {
+    marginLeft: 5,
+    fontSize: 14,
+    color: '#666',
+    flex: 1,
+  },
+  issue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 'auto',
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#666',
+  },
+  buttonsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 20,
+    gap: 40,
+  },
+  button: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  dislikeButton: {
+    borderWidth: 2,
+    borderColor: '#FF4444',
+  },
+  likeButton: {
+    borderWidth: 2,
+    borderColor: '#4CAF50',
+  },
+  instructionText: {
+    marginTop: 20,
+    color: '#999',
+    fontSize: 14,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f5',
+  },
+  emptyText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 20,
+    color: '#333',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 5,
   },
 });
-```
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  Image,
+  Alert,
+  ActivityIndicator,
+} from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 
-> React Native uses the same color format as the web. It supports hex triplets (this is what `#fff` is), `rgba`, `hsl`, and named colors, such as `red`, `green`, `blue`, `peru`, and `papayawhip`. For more information, see [Colors in React Native](https://reactnative.dev/docs/colors).
+const SEVERITY_LEVELS = ['Low', 'Medium', 'High', 'Critical'];
+const ISSUE_TYPES = [
+  'Broken Pavement',
+  'Missing Sidewalk',
+  'Potholes',
+  'Blocked Path',
+  'Open Manhole',
+  'Construction Debris',
+  'Poor Lighting',
+  'Other',
+];
 
-Once you save your changes, they're sent and applied to the running apps connected to the development server:
+export default function ReportScreen() {
+  const [images, setImages] = useState([]);
+  const [issueType, setIssueType] = useState('');
+  const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
+  const [severity, setSeverity] = useState('Medium');
+  const [loading, setLoading] = useState(false);
+  const [locationCoords, setLocationCoords] = useState(null);
 
-<ContentSpotlight
-  alt="App with updated text and background color"
-  src="/static/images/tutorial/02-index-screen-changes.png"
-  className="max-w-[720px]"
-/>
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant camera roll permissions');
+      return;
+    }
 
-</Step>
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
 
-## Summary
+    if (!result.canceled) {
+      setImages([...images, result.assets[0].uri]);
+    }
+  };
 
-<ProgressTracker
-  currentChapterIndex={0}
-  name="GET_STARTED"
-  summary="We've successfully created a new Expo project, used React Native core components, and are ready to develop our StickerSmash app."
-  nextChapterDescription="In the next chapter, we will learn how to add a stack and a tab navigator to our app."
-  nextChapterTitle="Add navigation"
-  nextChapterLink="/tutorial/add-navigation/"
-/>
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Please grant camera permissions');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.8,
+    });
+
+    if (!result.canceled) {
+      setImages([...images, result.assets[0].uri]);
+    }
+  };
+
+  const getCurrentLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission needed', 'Location permission is required');
+      return;
+    }
+
+    const location = await Location.getCurrentPositionAsync({});
+    setLocationCoords({
+      latitude: location.coords.latitude,
+      longitude: location.coords.longitude,
+    });
+    setLocation(`${location.coords.latitude.toFixed(6)}, ${location.coords.longitude.toFixed(6)}`);
+  };
+
+  const submitComplaint = async () => {
+    if (!description || !location || images.length === 0) {
+      Alert.alert('Missing Information', 'Please add photos, description, and location');
+      return;
+    }
+
+    setLoading(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setLoading(false);
+      Alert.alert(
+        'Complaint Registered! 🎉',
+        'Your complaint has been submitted to Bhanjanagar Municipal Corporation. Track it in "My Complaints" tab.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setImages([]);
+              setDescription('');
+              setLocation('');
+              setIssueType('');
+            },
+          },
+        ]
+      );
+    }, 2000);
+  };
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Add Photos *</Text>
+        <View style={styles.imageContainer}>
+          {images.map((uri, index) => (
+            <View key={index} style={styles.imageWrapper}>
+              <Image source={{ uri }} style={styles.thumbnail} />
+              <TouchableOpacity
+                style={styles.removeImage}
+                onPress={() => setImages(images.filter((_, i) => i !== index))}
+              >
+                <Ionicons name="close-circle" size={24} color="#FF4444" />
+              </TouchableOpacity>
+            </View>
+          ))}
+          <TouchableOpacity style={styles.addImageButton} onPress={pickImage}>
+            <Ionicons name="images" size={40} color="#FF6B35" />
+            <Text style={styles.addImageText}>Gallery</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.addImageButton} onPress={takePhoto}>
+            <Ionicons name="camera" size={40} color="#FF6B35" />
+            <Text style={styles.addImageText}>Camera</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Issue Type</Text>
+        <View style={styles.issueTypeContainer}>
+          {ISSUE_TYPES.map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.issueTypeButton,
+                issueType === type && styles.selectedIssueType,
+              ]}
+              onPress={() => setIssueType(type)}
+            >
+              <Text
+                style={[
+                  styles.issueTypeText,
+                  issueType === type && styles.selectedIssueTypeText,
+                ]}
+              >
+                {type}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Severity Level</Text>
+        <View style={styles.severityContainer}>
+          {SEVERITY_LEVELS.map((level) => (
+            <TouchableOpacity
+              key={level}
+              style={[
+                styles.severityButton,
+                severity === level && styles.selectedSeverity,
+                {
+                  backgroundColor:
+                    level === 'Critical'
+                      ? severity === level
+                        ? '#FF0000'
+                        : '#FFE5E5'
+                      : level === 'High'
+                      ? severity === level
+                        ? '#FF4444'
+                        : '#FFE5E5'
+                      : level === 'Medium'
+                      ? severity === level
+                        ? '#FF8C00'
+                        : '#FFF3E0'
+                      : severity === level
+                      ? '#4CAF50'
+                      : '#E8F5E9',
+                },
+              ]}
+              onPress={() => setSeverity(level)}
+            >
+              <Text
+                style={[
+                  styles.severityText,
+                  severity === level && styles.selectedSeverityText,
+                ]}
+              >
+                {level}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Description *</Text>
+        <TextInput
+          style={styles.descriptionInput}
+          placeholder="Describe the issue in detail..."
+          multiline
+          numberOfLines={4}
+          value={description}
+          onChangeText={setDescription}
+          textAlignVertical="top"
+        />
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Location *</Text>
+        <View style={styles.locationContainer}>
+          <TextInput
+            style={styles.locationInput}
+            placeholder="Tap to get current location"
+            value={location}
+            onChangeText={setLocation}
+            editable={false}
+          />
+          <TouchableOpacity style={styles.locationButton} onPress={getCurrentLocation}>
+            <Ionicons name="locate" size={24} color="white" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity
+        style={[styles.submitButton, loading && styles.disabledButton]}
+        onPress={submitComplaint}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="white" />
+        ) : (
+          <>
+            <Ionicons name="send" size={20} color="white" />
+            <Text style={styles.submitButtonText}>Submit Complaint</Text>
+          </>
+        )}
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 20,
+  },
+  section: {
+    marginBottom: 25,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+  },
+  imageContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  imageWrapper: {
+    position: 'relative',
+  },
+  thumbnail: {
+    width: 100,
+    height: 100,
+    borderRadius: 10,
+  },
+  removeImage: {
+    position: 'absolute',
+    top: -8,
+    right: -8,
+    backgroundColor: 'white',
+    borderRadius: 12,
+  },
+  addImageButton: {
+    width: 100,
+    height: 100,
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'white',
+  },
+  addImageText: {
+    color: '#FF6B35',
+    fontSize: 12,
+    marginTop: 5,
+  },
+  issueTypeContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  issueTypeButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  selectedIssueType: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  issueTypeText: {
+    color: '#666',
+    fontSize: 14,
+  },
+  selectedIssueTypeText: {
+    color: 'white',
+  },
+  severityContainer: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  severityButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  selectedSeverity: {},
+  severityText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    color: '#666',
+  },
+  selectedSeverityText: {
+    color: 'white',
+  },
+  descriptionInput: {
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    height: 120,
+    fontSize: 14,
+  },
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  locationInput: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    fontSize: 14,
+  },
+  locationButton: {
+    backgroundColor: '#FF6B35',
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitButton: {
+    backgroundColor: '#FF6B35',
+    borderRadius: 15,
+    padding: 18,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 30,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
+  submitButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+});
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  StyleSheet,
+  Dimensions,
+  Text,
+  TouchableOpacity,
+} from 'react-native';
+import MapView, { Marker, Callout } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
+
+// Mock complaint locations
+const mockComplaints = [
+  {
+    id: '1',
+    coordinate: { latitude: 20.1234, longitude: 85.1234 },
+    title: 'Broken Pavement',
+    description: 'Exposed wires and broken tiles',
+    severity: 'High',
+  },
+  {
+    id: '2',
+    coordinate: { latitude: 20.1256, longitude: 85.1256 },
+    title: 'Missing Sidewalk',
+    description: 'No sidewalk for 50 meters',
+    severity: 'Critical',
+  },
+  {
+    id: '3',
+    coordinate: { latitude: 20.1278, longitude: 85.1278 },
+    title: 'Potholes',
+    description: 'Multiple dangerous potholes',
+    severity: 'Medium',
+  },
+  {
+    id: '4',
+    coordinate: { latitude: 20.1220, longitude: 85.1220 },
+    title: 'Blocked Path',
+    description: 'Construction material blocking path',
+    severity: 'Low',
+  },
+];
+
+export default function MapScreen() {
+  const [selectedFilter, setSelectedFilter] = useState('All');
+  const [filteredComplaints, setFilteredComplaints] = useState(mockComplaints);
+
+  const initialRegion = {
+    latitude: 20.1250,
+    longitude: 85.1250,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  };
+
+  const getMarkerColor = (severity) => {
+    switch (severity) {
+      case 'Critical': return '#FF0000';
+      case 'High': return '#FF4444';
+      case 'Medium': return '#FF8C00';
+      case 'Low': return '#4CAF50';
+      default: return '#FF6B35';
+    }
+  };
+
+  const filterComplaints = (filter) => {
+    setSelectedFilter(filter);
+    if (filter === 'All') {
+      setFilteredComplaints(mockComplaints);
+    } else {
+      setFilteredComplaints(
+        mockComplaints.filter((c) => c.severity === filter)
+      );
+    }
+  };
+
+  const filters = ['All', 'Critical', 'High', 'Medium', 'Low'];
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.filterContainer}>
+        {filters.map((filter) => (
+          <TouchableOpacity
+            key={filter}
+            style={[
+              styles.filterButton,
+              selectedFilter === filter && styles.selectedFilter,
+            ]}
+            onPress={() => filterComplaints(filter)}
+          >
+            <Text
+              style={[
+                styles.filterText,
+                selectedFilter === filter && styles.selectedFilterText,
+              ]}
+            >
+              {filter}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <MapView style={styles.map} initialRegion={initialRegion}>
+        {filteredComplaints.map((complaint) => (
+          <Marker
+            key={complaint.id}
+            coordinate={complaint.coordinate}
+            pinColor={getMarkerColor(complaint.severity)}
+          >
+            <Callout>
+              <View style={styles.calloutContainer}>
+                <Text style={styles.calloutTitle}>{complaint.title}</Text>
+                <Text style={styles.calloutDescription}>
+                  {complaint.description}
+                </Text>
+                <View style={styles.severityBadge}>
+                  <Text style={styles.severityText}>{complaint.severity}</Text>
+                </View>
+              </View>
+            </Callout>
+          </Marker>
+        ))}
+      </MapView>
+
+      <View style={styles.legendContainer}>
+        <Text style={styles.legendTitle}>Severity Legend:</Text>
+        <View style={styles.legendItems}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#FF0000' }]} />
+            <Text style={styles.legendText}>Critical</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#FF4444' }]} />
+            <Text style={styles.legendText}>High</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#FF8C00' }]} />
+            <Text style={styles.legendText}>Medium</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: '#4CAF50' }]} />
+            <Text style={styles.legendText}>Low</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: 'white',
+    gap: 8,
+  },
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+    backgroundColor: '#f0f0f0',
+  },
+  selectedFilter: {
+    backgroundColor: '#FF6B35',
+  },
+  filterText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+  },
+  selectedFilterText: {
+    color: 'white',
+  },
+  map: {
+    flex: 1,
+  },
+  calloutContainer: {
+    width: 150,
+    padding: 10,
+  },
+  calloutTitle: {
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  calloutDescription: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 5,
+  },
+  severityBadge: {
+    backgroundColor: '#FFE5E5',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  severityText: {
+    fontSize: 10,
+    color: '#FF4444',
+    fontWeight: 'bold',
+  },
+  legendContainer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 20,
+    right: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  legendTitle: {
+    fontWeight: 'bold',
+    marginBottom: 8,
+    fontSize: 14,
+  },
+  legendItems: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  legendDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  legendText: {
+    fontSize: 12,
+    color: '#666',
+  },
+});
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+
+// Mock user complaints
+const mockMyComplaints = [
+  {
+    id: 'C001',
+    image: 'https://via.placeholder.com/100?text=Footpath1',
+    issue: 'Broken pavement near temple road',
+    location: 'Temple Road, Bhanjanagar',
+    status: 'Under Review',
+    severity: 'High',
+    date: '2026-05-15',
+    trackingId: 'BMC-2026-001',
+  },
+  {
+    id: 'C002',
+    image: 'https://via.placeholder.com/100?text=Footpath2',
+    issue: 'Missing sidewalk on college street',
+    location: 'College Street',
+    status: 'In Progress',
+    severity: 'Critical',
+    date: '2026-05-12',
+    trackingId: 'BMC-2026-002',
+  },
+  {
+    id: 'C003',
+    image: 'https://via.placeholder.com/100?text=Footpath3',
+    issue: 'Potholes near market area',
+    location: 'Main Market Road',
+    status: 'Resolved',
+    severity: 'Medium',
+    date: '2026-04-28',
+    trackingId: 'BMC-2026-003',
+  },
+];
+
+export default function ComplaintsListScreen() {
+  const [activeTab, setActiveTab] = useState('Active');
+  const [complaints, setComplaints] = useState(mockMyComplaints);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'Under Review': return '#FFA500';
+      case 'In Progress': return '#2196F3';
+      case 'Resolved': return '#4CAF50';
+      default: return '#666';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'Under Review': return 'time-outline';
+      case 'In Progress': return 'construct-outline';
+      case 'Resolved': return 'checkmark-circle-outline';
+      default: return 'information-circle-outline';
+    }
+  };
+
+  const filterComplaints = (tab) => {
+    setActiveTab(tab);
+    if (tab === 'All') {
+      setComplaints(mockMyComplaints);
+    } else if (tab === 'Active') {
+      setComplaints(mockMyComplaints.filter(c => c.status !== 'Resolved'));
+    } else {
+      setComplaints(mockMyComplaints.filter(c => c.status === 'Resolved'));
+    }
+  };
+
+  const renderComplaintCard = ({ item }) => (
+    <TouchableOpacity style={styles.card}>
+      <Image source={{ uri: item.image }} style={styles.complaintImage} />
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.issueText}>{item.issue}</Text>
+          <View style={[styles.severityBadge, { backgroundColor: getStatusColor(item.severity) }]}>
+            <Text style={styles.severityText}>{item.severity}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.locationRow}>
+          <Ionicons name="location-outline" size={14} color="#666" />
+          <Text style={styles.locationText}>{item.location}</Text>
+        </View>
+        
+        <View style={styles.trackingRow}>
+          <Text style={styles.trackingLabel}>Tracking ID:</Text>
+          <Text style={styles.trackingId}>{item.trackingId}</Text>
+        </View>
+        
+        <View style={styles.cardFooter}>
+          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '20' }]}>
+            <Ionicons
+              name={getStatusIcon(item.status)}
+              size={14}
+              color={getStatusColor(item.status)}
+            />
+            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+              {item.status}
+            </Text>
+          </View>
+          <Text style={styles.dateText}>{item.date}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#ccc" style={styles.arrow} />
+    </TouchableOpacity>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.tabsContainer}>
+        {['All', 'Active', 'Resolved'].map((tab) => (
+          <TouchableOpacity
+            key={tab}
+            style={[styles.tab, activeTab === tab && styles.activeTab]}
+            onPress={() => filterComplaints(tab)}
+          >
+            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+              {tab}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <FlatList
+        data={complaints}
+        renderItem={renderComplaintCard}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContainer}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={60} color="#ccc" />
+            <Text style={styles.emptyText}>No complaints found</Text>
+          </View>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
+    padding: 5,
+    marginBottom: 10,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderRadius: 8,
+  },
+  activeTab: {
+    backgroundColor: '#FF6B35',
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#666',
+  },
+  activeTabText: {
+    color: 'white',
+  },
+  listContainer: {
+    padding: 15,
+  },
+  card: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    marginBottom: 15,
+    flexDirection: 'row',
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  complaintImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    marginRight: 15,
+  },
+  cardContent: {
+    flex: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  issueText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
+    marginRight: 10,
+  },
+  severityBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  severityText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 5,
+  },
+  locationText: {
+    marginLeft: 5,
+    fontSize: 12,
+    color: '#666',
+  },
+  trackingRow: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  trackingLabel: {
+    fontSize: 12,
+    color: '#999',
+  },
+  trackingId: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '600',
+    marginLeft: 5,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  dateText: {
+    fontSize: 11,
+    color: '#999',
+  },
+  arrow: {
+    alignSelf: 'center',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 50,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 10,
+  },
+});
+// API service for Bhanjanagar Municipal Corporation backend
+const BASE_URL = 'https://api.bhanjanagarmunicipal.gov.in/api/v1';
+
+export const api = {
+  // Get all complaints for swiping
+  getComplaints: async (page = 1) => {
+    try {
+      const response = await fetch(`${BASE_URL}/complaints?page=${page}`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching complaints:', error);
+      throw error;
+    }
+  },
+
+  // Submit a new complaint
+  submitComplaint: async (complaintData) => {
+    try {
+      const formData = new FormData();
+      formData.append('description', complaintData.description);
+      formData.append('location', complaintData.location);
+      formData.append('severity', complaintData.severity);
+      formData.append('issue_type', complaintData.issueType);
+      formData.append('latitude', complaintData.latitude);
+      formData.append('longitude', complaintData.longitude);
+      
+      complaintData.images.forEach((imageUri, index) => {
+        formData.append('images', {
+          uri: imageUri,
+          type: 'image/jpeg',
+          name: `complaint_${index}.jpg`,
+        });
+      });
+
+      const response = await fetch(`${BASE_URL}/complaints`, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Error submitting complaint:', error);
+      throw error;
+    }
+  },
+
+  // Vote on a complaint (Tinder-like swipe)
+  voteComplaint: async (complaintId, voteType) => {
+    try {
+      const response = await fetch(`${BASE_URL}/complaints/${complaintId}/vote`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ vote_type: voteType }), // 'upvote' or 'downvote'
+      });
+      return await response.json();
+    } catch (error) {
+      console.error('Error voting:', error);
+      throw error;
+    }
+  },
+
+  // Get user's submitted complaints
+  getUserComplaints: async (userId) => {
+    try {
+      const response = await fetch(`${BASE_URL}/users/${userId}/complaints`);
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching user complaints:', error);
+      throw error;
+    }
+  },
+
+  // Get complaints by location (for map)
+  getComplaintsByLocation: async (lat, lng, radius = 5) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/complaints/map?lat=${lat}&lng=${lng}&radius=${radius}`
+      );
+      return await response.json();
+    } catch (error) {
+      console.error('Error fetching map complaints:', error);
+      throw error;
+    }
+  },
+};
+export const COLORS = {
+  primary: '#FF6B35',
+  secondary: '#004E89',
+  success: '#4CAF50',
+  danger: '#FF4444',
+  warning: '#FFA500',
+  background: '#f5f5f5',
+  white: '#FFFFFF',
+  text: '#333333',
+  textLight: '#666666',
+  textMuted: '#999999',
+};
+
+export const SEVERITY_COLORS = {
+  Critical: '#FF0000',
+  High: '#FF4444',
+  Medium: '#FF8C00',
+  Low: '#4CAF50',
+};
+
+export const MUNICIPAL_INFO = {
+  name: 'Bhanjanagar Municipal Corporation',
+  contact: '1800-123-4567',
+  email: 'complaints@bhanjanagarmunicipal.gov.in',
+  website: 'https://bhanjanagarmunicipal.gov.in',
+};
